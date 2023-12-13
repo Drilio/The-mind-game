@@ -14,3 +14,12 @@ socket.on("message", (message) => {
   console.log(message);
 });
 
+socket.on("SERVER game", ()=>{
+  console.log('SERVER GAME')
+})
+
+const startButton = document.getElementById('start-button') as HTMLButtonElement
+
+startButton.addEventListener("click",() => {
+  socket.emit('PLAYER game', 'PLAYER game')
+})
