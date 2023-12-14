@@ -83,6 +83,12 @@ io.on('connection', (socket) => {
             lvl++
             io.emit('Round end')
         }
+        if(lvl >= 12){
+            io.emit('END GAME', 'you won !')
+            gameStarted = false
+            lvl = 1
+            life = 2
+        }
     })
 
     //player lost life
@@ -94,6 +100,8 @@ io.on('connection', (socket) => {
         if (life <= 0) {
             io.emit('END GAME', 'you lost')
             gameStarted = false;
+            lvl = 1
+            life = 2
         }
     })
 });
