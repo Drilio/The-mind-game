@@ -20,6 +20,7 @@ let lvl = 1;
 let roundStarted = false;
 let playerIDs: string[] = [];
 let sockets: Socket[] = []
+let cardsPlayThisRound:number[] = []
 const shuffle = (array: string[]) => {
     return array.sort(() => Math.random() - 0.5);
 };
@@ -43,6 +44,30 @@ function getCards(deck:number[]){
     playerHand = deck.slice(0, lvl);
     const newDeck = deck.slice(lvl);
     return [playerHand, newDeck];
+}
+function checkCardPlayed(number: number, array: number[]):number
+{
+    const numbersLowerThanGiven = array.filter(arrayNum => arrayNum < number);
+    return numbersLowerThanGiven.length;
+}
+
+function didWeLost(lostLife:number, life:number){
+    life = life - lostLife;
+    if (life <= 0) {
+        io.emit('END GAME', 'you lost');
+        resetGame()
+    }
+}
+
+function resetGame(){
+    life = 2
+    gameStarted = false
+    emptyHand = 0
+    lvl = 1
+    roundStarted = false
+    playerIDs = []
+    sockets = []
+    cardsPlayThisRound = []
 }
 
 io.on('connection', (socket) => {
@@ -71,38 +96,35 @@ io.on('connection', (socket) => {
     })
 
     //player play card
-    socket.on('PLAYER PLAY CARD', (msg) => {
-        io.emit('SERVER PLAY CARD', msg)
+    socket.on('PLAYER PLAY CARD', (cardPlay) => {
+        io.emit('SERVER PLAY CARD', cardPlay);
+        cardsPlayThisRound.push(cardPlay);
+        const checkCards=checkCardPlayed(cardPlay,cardsPlayThisRound);
+        didWeLost(checkCards, life);
     })
 
     //End round
     socket.on('PLAYER EMPTY HAND', () => {
         emptyHand++
         if (emptyHand == 2) {
-            roundStarted = false
-            lvl++
-            io.emit('Round end')
+            roundStarted = false;
+            lvl++;
+            io.emit('Round end');
+            cardsPlayThisRound = [];
         }
         if(lvl >= 12){
             io.emit('END GAME', 'you won !')
-            gameStarted = false
-            lvl = 1
-            life = 2
+            resetGame()
         }
     })
 
     //player lost life
     socket.on('PLAYER LOST LIFE', () => {
-        life--
-        io.emit('PLAYER LOST LIFE', life)
+        life--;
+        io.emit('PLAYER LOST LIFE', life);
         // END GAME
         //player lost
-        if (life <= 0) {
-            io.emit('END GAME', 'you lost')
-            gameStarted = false;
-            lvl = 1
-            life = 2
-        }
+        didWeLost(1, life)
     })
 });
 server.listen(3300, () => {
