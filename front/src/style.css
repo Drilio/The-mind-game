@@ -5,14 +5,20 @@
     align-items: center;
     height: 100vh;
 }
+
+
 button{
     border: pink;
     color: pink;
     border-radius: 50px;
     background-color: blue;
     padding: 5px;
+   
 }
 
 html{
     background-color: black;
+}
+#player-name{
+    color:white;
 }
