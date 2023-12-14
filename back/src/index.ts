@@ -1,6 +1,6 @@
 import express from 'express';
 import { createServer } from 'node:http';
-import { Server } from 'socket.io';
+import {Server, Socket} from 'socket.io';
 
 
 const app = express();
@@ -13,84 +13,90 @@ app.get('/', (req, res) => {
     res.send('<h1>Hello world</h1>');
 });
 
-
-io.on('connection', (socket) => {
-        let gameStarted = false
-        let player = 0;
-        let life = 2;
-        let emptyHand = 0;
-        let lvl = 1;
-        let roundStarted = false
-    // Deck of card distribution
-    const shuffle = (array: string[]) => {
-        return array.sort(() => Math.random() - 0.5);
-    };
+let gameStarted = false;
+let life = 2;
+let emptyHand = 0;
+let lvl = 1;
+let roundStarted = false;
+let playerIDs: string[] = [];
+let sockets: Socket[] = []
+const shuffle = (array: string[]) => {
+    return array.sort(() => Math.random() - 0.5);
+};
 
 // Usage
-    const myArray = [];
-    for( let i =0; i<=99; i++){
-        myArray.push(i);
-    }
-    // @ts-ignore
-    let shuffledArray = shuffle(myArray);
-    console.log(shuffledArray);
+const myArray : number[] = [];
+for (let i = 0; i <= 99; i++) {
+    myArray.push(i);
+}
 
-    //PREPARE GAME
-    let roundDeck = [... shuffledArray];
+// @ts-ignore
+let shuffledArray: number[] = shuffle(myArray);
+console.log(shuffledArray);
+
+
+//PREPARE GAME
+let roundDeck:number[] = [...shuffledArray];
+
+function getCards(){
+    let playerHand: number[]= [];
+    for (let i = 0; i < lvl; i++) {
+        const random = Math.floor(Math.random() * roundDeck.length);
+        roundDeck = shuffledArray.filter((val, i) => {i !== random
+        });
+        return(playerHand);
+    }
+}
+
+io.on('connection', (socket) => {
+
+    //START GAME
     //start party
     socket.on('PLAYER GAME', () => {
-        player ++
-        if (player == 2) {
+        playerIDs.push(socket.id);
+        if (playerIDs.length == 2) {
             io.emit('SERVER GAME');
             gameStarted = true;
             roundStarted = true;
-            for (let i = 0; i < lvl; i++) {
-                const random = Math.floor(Math.random() * roundDeck.length);
-                io.emit(roundDeck[random]);
-                roundDeck = shuffledArray.filter((val, i) => {
-                    i !== random
-                });
-            }
-        }
+   }
     })
 
-    //START GAME
+    // Deck of card distribution
+    socket.on('askCards', () => {
+        io.to(socket.id).emit('tienstescartes', getCards())
+    })
 
     //start round
-    socket.on('PLAYER UP HAND', ()=>{
+    socket.on('PLAYER UP HAND', () => {
         io.emit('SERVER UP HAND')
     })
 
     //player play card
-    socket.on('PLAYER PLAY CARD', (msg)=>{
+    socket.on('PLAYER PLAY CARD', (msg) => {
         io.emit('SERVER PLAY CARD', msg)
     })
 
     //End round
-    socket.on('PLAYER EMPTY HAND', ()=>{
-        let emptyHand = 0;
-        emptyHand ++
-        if(emptyHand == 2){
+    socket.on('PLAYER EMPTY HAND', () => {
+        emptyHand++
+        if (emptyHand == 2) {
             roundStarted = false
-            lvl ++
+            lvl++
             io.emit('Round end')
         }
     })
 
     //player lost life
-    socket.on('PLAYER LOST LIFE',()=>{
-        life --
+    socket.on('PLAYER LOST LIFE', () => {
+        life--
         io.emit('PLAYER LOST LIFE', life)
+        // END GAME
+        //player lost
+        if (life <= 0) {
+            io.emit('END GAME', 'you lost')
+            gameStarted = false;
+        }
     })
-
-    // END GAME
-
-    //player lost
-    if(life <= 0 ){
-        io.emit('END GAME', 'you lost')
-        gameStarted = false;
-    }
-
 });
 server.listen(3300, () => {
     console.log('server running at http://localhost:3300');
