@@ -18,7 +18,9 @@ io.on('connection', (socket) => {
         let gameStarted = false
         let player = 0;
         let life = 2;
-        let emptyHand = 0
+        let emptyHand = 0;
+        let lvl = 1;
+        let roundStarted = false
     // Deck of card distribution
     const shuffle = (array: string[]) => {
         return array.sort(() => Math.random() - 0.5);
@@ -30,19 +32,31 @@ io.on('connection', (socket) => {
         myArray.push(i);
     }
     // @ts-ignore
-    const shuffledArray = shuffle(myArray);
+    let shuffledArray = shuffle(myArray);
     console.log(shuffledArray);
 
+    //PREPARE GAME
+    let roundDeck = [... shuffledArray];
     //start party
     socket.on('PLAYER GAME', () => {
         player ++
-        if(player === 2){
-        io.emit('SERVER GAME');
-        gameStarted = true;
+        if (player == 2) {
+            io.emit('SERVER GAME');
+            gameStarted = true;
+            roundStarted = true;
+            for (let i = 0; i < lvl; i++) {
+                const random = Math.floor(Math.random() * roundDeck.length);
+                io.emit(roundDeck[random]);
+                roundDeck = shuffledArray.filter((val, i) => {
+                    i !== random
+                });
+            }
         }
     })
 
-    //start lvl
+    //START GAME
+
+    //start round
     socket.on('PLAYER UP HAND', ()=>{
         io.emit('SERVER UP HAND')
     })
@@ -52,26 +66,30 @@ io.on('connection', (socket) => {
         io.emit('SERVER PLAY CARD', msg)
     })
 
+    //End round
+    socket.on('PLAYER EMPTY HAND', ()=>{
+        let emptyHand = 0;
+        emptyHand ++
+        if(emptyHand == 2){
+            roundStarted = false
+            lvl ++
+            io.emit('Round end')
+        }
+    })
+
     //player lost life
     socket.on('PLAYER LOST LIFE',()=>{
         life --
         io.emit('PLAYER LOST LIFE', life)
     })
 
+    // END GAME
+
     //player lost
     if(life <= 0 ){
         io.emit('END GAME', 'you lost')
         gameStarted = false;
     }
-
-    //check if lvl is finito pipo
-    socket.on('EMPTY HAND',()=>{
-        emptyHand ++
-        if(emptyHand == 2){
-            io.emit('END LVL')
-        }
-    })
-
 
 });
 server.listen(3300, () => {
