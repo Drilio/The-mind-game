@@ -18,6 +18,10 @@ io.on('connection', (socket) => {
     socket.on('chat message', (msg) => {
         io.emit('chat message', msg);
     });
+
+    socket.on('PLAYER game', (msg) => {
+        io.emit('SERVER game',msg);
+    })
 });
 server.listen(3300, () => {
     console.log('server running at http://localhost:3300');

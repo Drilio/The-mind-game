@@ -14,3 +14,20 @@ socket.on("message", (message) => {
   console.log(message);
 });
 
+socket.on("SERVER GAME", ()=>{
+  console.log('SERVER GAME')
+})
+
+socket.on("SERVER UP HAND", (cards: number[])=>{
+  console.log('SERVER UP HAND', cards)
+})
+
+
+const startButton = document.getElementById('start-button') as HTMLButtonElement
+
+startButton.addEventListener("click",() => {
+  socket.emit('PLAYER game', 'PLAYER game')
+})
+
+
+
