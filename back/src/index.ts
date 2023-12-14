@@ -63,7 +63,7 @@ io.on('connection', (socket) => {
 
     // Deck of card distribution
     socket.on('askCards', () => {
-        io.to(socket.id).emit('tienstescartes', getCards())
+        io.to(socket.id).emit('your cards', getCards())
     })
 
     //start round
