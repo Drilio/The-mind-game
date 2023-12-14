@@ -1,6 +1,8 @@
 import express from 'express';
 import {createServer} from 'node:http';
 import {Server, Socket} from 'socket.io';
+import {beforeEach} from "node:test";
+import {restartTries} from "concurrently/dist/src/defaults";
 
 interface IPlayer {
         'playerId': string,
@@ -96,6 +98,13 @@ function lvlUp(lvl: number, life: number) {
     }
 }
 
+function getPlayersWithCleanHands(cardPlay: number, playersHand: IPlayer[]){
+    return playersHand.map((player)=> ({
+        ...player,
+        hand: player.hand.filter(playerCard => playerCard < cardPlay)
+    }))
+}
+
 io.on('connection', (socket) => {
 
     //START GAME
@@ -135,6 +144,7 @@ io.on('connection', (socket) => {
             return [...acc, ...val.hand]
         }, [])
         const checkCards = checkCardPlayed(cardPlay, allPlayerCards);
+        playersHand = getPlayersWithCleanHands(cardPlay, playersHand)
         didWeLost(checkCards, life);
     })
 
