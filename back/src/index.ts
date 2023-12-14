@@ -1,11 +1,16 @@
 import express from 'express';
-import { createServer } from 'node:http';
+import {createServer} from 'node:http';
 import {Server, Socket} from 'socket.io';
 
+interface IPlayer {
+        'playerId': string,
+        'name': string,
+        'hand': number[],
+    }
 
 const app = express();
 const server = createServer(app);
-const io = new Server(server,{
+const io = new Server(server, {
     connectionStateRecovery: {}
 });
 
@@ -19,14 +24,15 @@ let emptyHand = 0;
 let lvl = 1;
 let roundStarted = false;
 let playerIDs: string[] = [];
-let sockets: Socket[] = []
-let cardsPlayThisRound:number[] = []
+let sockets: Socket[] = [];
+let cardsPlayThisRound: number[] = [];
+let playersHand : IPlayer[] = [];
 const shuffle = (array: string[]) => {
     return array.sort(() => Math.random() - 0.5);
 };
 
 // Usage
-const myArray : number[] = [];
+const myArray: number[] = [];
 for (let i = 0; i <= 99; i++) {
     myArray.push(i);
 }
@@ -37,21 +43,21 @@ console.log(shuffledArray);
 
 
 //PREPARE GAME
-let roundDeck:number[] = [...shuffledArray];
+let roundDeck: number[] = [...shuffledArray];
 
-function getCards(deck:number[]){
-    let playerHand: number[]= [];
+function getCards(deck: number[]) {
+    let playerHand: number[] = [];
     playerHand = deck.slice(0, lvl);
     const newDeck = deck.slice(lvl);
     return [playerHand, newDeck];
 }
-function checkCardPlayed(number: number, array: number[]):number
-{
-    const numbersLowerThanGiven = array.filter(arrayNum => arrayNum < number);
+
+function checkCardPlayed(cardValue: number, allPlayerCards: number[]): number {
+    const numbersLowerThanGiven = allPlayerCards.filter(arrayNum => arrayNum < cardValue);
     return numbersLowerThanGiven.length;
 }
 
-function didWeLost(lostLife:number, life:number){
+function didWeLost(lostLife: number, life: number) {
     life = life - lostLife;
     if (life <= 0) {
         io.emit('END GAME', 'you lost');
@@ -59,7 +65,20 @@ function didWeLost(lostLife:number, life:number){
     }
 }
 
-function resetGame(){
+function sendData(){
+    let gameData = [{
+        gameStarted : gameStarted,
+        life: life,
+        emptyhand: emptyHand,
+        lvl: lvl,
+        roundStarted: roundStarted,
+        playerIds: playerIDs,
+        cardsPlayThisRound: cardsPlayThisRound,
+    }]
+    io.emit('GameData : ', gameData)
+}
+
+function resetGame() {
     life = 2
     gameStarted = false
     emptyHand = 0
@@ -68,6 +87,13 @@ function resetGame(){
     playerIDs = []
     sockets = []
     cardsPlayThisRound = []
+}
+
+function lvlUp(lvl: number, life: number) {
+    lvl++
+    if (lvl == 3 || lvl == 6 || lvl == 9) {
+        life++
+    }
 }
 
 io.on('connection', (socket) => {
@@ -80,16 +106,22 @@ io.on('connection', (socket) => {
             io.emit('SERVER GAME');
             gameStarted = true;
             roundStarted = true;
-   }
+        }
     })
 
     // Deck of card distribution
-    socket.on('askCards', () => {
+    socket.on('askCards', (playerName) => {
         const [hand, newDeck] = getCards(roundDeck)
         roundDeck = newDeck
         socket.emit('your cards', hand)
+        playersHand.push(
+            {
+                'playerId': socket.id,
+                'name': playerName,
+                'hand': hand,
+            })
     })
-
+life
     //start round
     socket.on('PLAYER UP HAND', () => {
         io.emit('SERVER UP HAND')
@@ -99,7 +131,10 @@ io.on('connection', (socket) => {
     socket.on('PLAYER PLAY CARD', (cardPlay) => {
         io.emit('SERVER PLAY CARD', cardPlay);
         cardsPlayThisRound.push(cardPlay);
-        const checkCards=checkCardPlayed(cardPlay,cardsPlayThisRound);
+        const allPlayerCards = playersHand.reduce((acc: number[], val, i) => {
+            return [...acc, ...val.hand]
+        }, [])
+        const checkCards = checkCardPlayed(cardPlay, allPlayerCards);
         didWeLost(checkCards, life);
     })
 
@@ -108,19 +143,22 @@ io.on('connection', (socket) => {
         emptyHand++
         if (emptyHand == 2) {
             roundStarted = false;
-            lvl++;
+            lvlUp(lvl, life);
             io.emit('Round end');
             cardsPlayThisRound = [];
         }
-        if(lvl >= 12){
+        if (lvl >= 12) {
             io.emit('END GAME', 'you won !')
             resetGame()
         }
     })
 
+    socket.on('I NEED DATA', ()=>{
+        sendData();
+    })
+
     //player lost life
     socket.on('PLAYER LOST LIFE', () => {
-        life--;
         io.emit('PLAYER LOST LIFE', life);
         // END GAME
         //player lost
