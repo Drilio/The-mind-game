@@ -121,7 +121,7 @@ io.on('connection', (socket) => {
                 'hand': hand,
             })
     })
-life
+
     //start round
     socket.on('PLAYER UP HAND', () => {
         io.emit('SERVER UP HAND')
