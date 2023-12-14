@@ -40,12 +40,9 @@ let roundDeck:number[] = [...shuffledArray];
 
 function getCards(){
     let playerHand: number[]= [];
-    for (let i = 0; i < lvl; i++) {
-        const random = Math.floor(Math.random() * roundDeck.length);
-        roundDeck = shuffledArray.filter((val, i) => {i !== random
-        });
-        return(playerHand);
-    }
+    playerHand = roundDeck.slice(0, lvl);
+    roundDeck = roundDeck.slice(lvl);
+    return playerHand;
 }
 
 io.on('connection', (socket) => {
@@ -63,7 +60,7 @@ io.on('connection', (socket) => {
 
     // Deck of card distribution
     socket.on('askCards', () => {
-        io.to(socket.id).emit('your cards', getCards())
+        socket.emit('your cards', getCards())
     })
 
     //start round
