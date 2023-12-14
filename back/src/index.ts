@@ -15,13 +15,82 @@ app.get('/', (req, res) => {
 
 
 io.on('connection', (socket) => {
-    socket.on('chat message', (msg) => {
-        io.emit('chat message', msg);
-    });
+        let gameStarted = false
+        let player = 0;
+        let life = 2;
+        let emptyHand = 0;
+        let lvl = 1;
+        let roundStarted = false
+    // Deck of card distribution
+    const shuffle = (array: string[]) => {
+        return array.sort(() => Math.random() - 0.5);
+    };
 
-    socket.on('PLAYER game', (msg) => {
-        io.emit('SERVER game',msg);
+// Usage
+    const myArray = [];
+    for( let i =0; i<=99; i++){
+        myArray.push(i);
+    }
+    // @ts-ignore
+    let shuffledArray = shuffle(myArray);
+    console.log(shuffledArray);
+
+    //PREPARE GAME
+    let roundDeck = [... shuffledArray];
+    //start party
+    socket.on('PLAYER GAME', () => {
+        player ++
+        if (player == 2) {
+            io.emit('SERVER GAME');
+            gameStarted = true;
+            roundStarted = true;
+            for (let i = 0; i < lvl; i++) {
+                const random = Math.floor(Math.random() * roundDeck.length);
+                io.emit(roundDeck[random]);
+                roundDeck = shuffledArray.filter((val, i) => {
+                    i !== random
+                });
+            }
+        }
     })
+
+    //START GAME
+
+    //start round
+    socket.on('PLAYER UP HAND', ()=>{
+        io.emit('SERVER UP HAND')
+    })
+
+    //player play card
+    socket.on('PLAYER PLAY CARD', (msg)=>{
+        io.emit('SERVER PLAY CARD', msg)
+    })
+
+    //End round
+    socket.on('PLAYER EMPTY HAND', ()=>{
+        let emptyHand = 0;
+        emptyHand ++
+        if(emptyHand == 2){
+            roundStarted = false
+            lvl ++
+            io.emit('Round end')
+        }
+    })
+
+    //player lost life
+    socket.on('PLAYER LOST LIFE',()=>{
+        life --
+        io.emit('PLAYER LOST LIFE', life)
+    })
+
+    // END GAME
+
+    //player lost
+    if(life <= 0 ){
+        io.emit('END GAME', 'you lost')
+        gameStarted = false;
+    }
+
 });
 server.listen(3300, () => {
     console.log('server running at http://localhost:3300');
